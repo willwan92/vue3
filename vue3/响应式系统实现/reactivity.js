@@ -13,6 +13,7 @@ const bucket = new WeakMap()
 
 // 存储被注册的副作用函数
 let activeEffect
+const effectStack = []
 
 /**
  * 从数据的关联的依赖集合中清除副作用函数
@@ -38,7 +39,10 @@ function effect(fn) {
     // 每次副作用执行时，清除副作用函数
     cleanUp(effectFn)
     activeEffect = effectFn
+    effectStack.push(effectFn)
     fn()
+    effectStack.pop(effectFn)
+    activeEffect = effectStack[effectStack.length - 1]
   }
 
   // 用来存储所有与该副作用函数相关联的依赖集合
@@ -91,7 +95,7 @@ function trigger(target, key) {
 }
 
 
-const data = { ok: true, text: 'hello world' }
+const data = { foo: true, bar: true }
 const obj = new Proxy(data, {
   get(target, key) {
     track(target, key)
@@ -104,9 +108,17 @@ const obj = new Proxy(data, {
   }
 })
 
-effect(function effectFn() {
-  console.log('effectFn')
-  document.body.innerText = obj.ok ? obj.text : 'not'
+let temp1, temp2
+
+effect(function effectFn1() {
+  console.log('effectFn1 执行')
+
+  effect(function effectFn2() {
+    console.log('effectFn2 执行')
+    temp2 = obj.bar
+  })
+
+  temp1 = obj.foo
 })
 
 // setTimeout(() => {
